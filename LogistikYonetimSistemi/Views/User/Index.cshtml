@@ -1,0 +1,147 @@
+@model List<LogistikYonetimSistemi.ViewModels.UserViewModel>
+@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+}
+
+<div class="d-flex justify-content-end mb-4">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus me-1"></i>Yeni Kullanıcı
+    </button>
+</div>
+
+<div class="card">
+<div class="card-body p-0">
+<table class="table table-hover mb-0">
+    <thead>
+        <tr><th>ID</th><th>Kullanıcı Adı</th><th>Rol</th><th>Departman / E-posta</th><th>İşlem</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var u in Model)
+    {
+        var roleCss = u.Role switch {
+            "Admin"    => "bg-danger",
+            "Staff"    => "bg-primary",
+            "Customer" => "bg-success",
+            "Courier"  => "bg-warning text-dark",
+            _          => "bg-secondary"
+        };
+        <tr>
+            <td><code>@u.Id</code></td>
+            <td><i class="bi bi-person-circle me-1 text-muted"></i>@u.Username</td>
+            <td><span class="badge @roleCss">@u.Role</span></td>
+            <td>@u.Extra</td>
+            <td>
+                <form method="post" action="/User/Delete"
+                      onsubmit="return confirm('@u.Username silinsin mi?')">
+                    <input type="hidden" name="userId" value="@u.Id"/>
+                    <button class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+</div>
+</div>
+
+<!-- Yeni Kullanıcı Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Yeni Kullanıcı Ekle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/User/Create">
+      <div class="modal-body row g-3">
+        <div class="col-6">
+          <label class="form-label">Kullanıcı Adı</label>
+          <input name="Username" class="form-control" required/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Şifre</label>
+          <input name="Password" type="password" class="form-control" required/>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Rol</label>
+          <select name="Role" class="form-select" id="roleSelect">
+              <option value="2">Müşteri</option>
+              <option value="1">Personel</option>
+              <option value="3">Kurye</option>
+              <option value="0">Admin</option>
+          </select>
+        </div>
+
+        <!-- Extra: Staff=Email, Customer=Email, Courier=AraçTipi, Admin=gizli -->
+        <div class="col-6" id="extraDiv">
+          <label class="form-label" id="extraLabel">E-posta</label>
+          <input name="Extra" id="extraInput" class="form-control"
+                 placeholder="ornek@mail.com"/>
+        </div>
+
+        <!-- Extra2: Staff=Departman, Customer=Adres, diğerleri=gizli -->
+        <div class="col-6" id="extra2Div">
+          <label class="form-label" id="extra2Label">Departman</label>
+          <input name="Extra2" id="extra2Input" class="form-control"
+                 placeholder="Satın Alma, Depo..."/>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="submit" class="btn btn-primary">Ekle</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    const roleSelect  = document.getElementById('roleSelect');
+    const extraDiv    = document.getElementById('extraDiv');
+    const extraLabel  = document.getElementById('extraLabel');
+    const extraInput  = document.getElementById('extraInput');
+    const extra2Div   = document.getElementById('extra2Div');
+    const extra2Label = document.getElementById('extra2Label');
+    const extra2Input = document.getElementById('extra2Input');
+
+    function updateFields() {
+        const role = roleSelect.value;
+        // role: 0=Admin, 1=Staff, 2=Customer, 3=Courier
+        const cfg = {
+            '0': { e1: null,       e2: null },
+            '1': { e1: 'E-posta',  e2: 'Departman',  p1: 'ornek@mail.com',       p2: 'Satın Alma, Depo...' },
+            '2': { e1: 'E-posta',  e2: 'Adres',       p1: 'ornek@mail.com',       p2: 'İstanbul, Kadıköy...' },
+            '3': { e1: 'Araç Tipi',e2: null,          p1: 'Motosiklet, Araç...'  },
+        };
+        const c = cfg[role] ?? cfg['2'];
+
+        if (c.e1) {
+            extraDiv.style.display   = '';
+            extraLabel.textContent   = c.e1;
+            extraInput.placeholder   = c.p1 ?? '';
+            extraInput.required      = true;
+        } else {
+            extraDiv.style.display   = 'none';
+            extraInput.required      = false;
+            extraInput.value         = '';
+        }
+
+        if (c.e2) {
+            extra2Div.style.display  = '';
+            extra2Label.textContent  = c.e2;
+            extra2Input.placeholder  = c.p2 ?? '';
+        } else {
+            extra2Div.style.display  = 'none';
+            extra2Input.value        = '';
+        }
+    }
+
+    roleSelect.addEventListener('change', updateFields);
+    updateFields();
+})();
+</script>
+}

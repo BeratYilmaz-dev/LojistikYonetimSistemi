@@ -1,0 +1,101 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Giriş Yap";
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8"/>
+    <title>Giriş — Lojistik YS</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+    <link rel="stylesheet" href="~/css/app.css"/>
+</head>
+<body>
+<div class="login-page">
+
+    <!-- Sol panel -->
+    <div class="login-panel">
+        <div class="login-logo"><i class="bi bi-pc-display-horizontal"></i></div>
+        <h1>Lojistik YS</h1>
+        <p>Akıllı Tedarik ve<br/>Lojistik Yönetim Sistemi</p>
+
+        <div style="margin-top:2.5rem;width:100%;position:relative;z-index:1;">
+            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#4b5563;font-weight:700;margin-bottom:.75rem;">
+                Özellikler
+            </div>
+            @foreach (var feat in new[]{"Stok & Ürün Yönetimi","Sipariş Takibi & Kargo","Ödeme Entegrasyonu","Rol Bazlı Yetkilendirme","Sistem Loglama"})
+            {
+                <div style="display:flex;align-items:center;gap:.5rem;color:#d1d5db;font-size:.84rem;padding:.3rem 0;">
+                    <i class="bi bi-check-circle-fill" style="color:#3b82f6;font-size:.85rem;"></i>
+                    @feat
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Sağ panel -->
+    <div class="login-main">
+        <div class="login-box">
+            <h2>Hoş Geldiniz</h2>
+            <p class="text-muted mb-4" style="font-size:.88rem;">Sisteme erişmek için giriş yapın</p>
+
+            @if (TempData["RegisterSuccess"] != null)
+            {
+                <div class="alert alert-success py-2 mb-3">
+                    <i class="bi bi-check-circle me-2"></i>@TempData["RegisterSuccess"]
+                </div>
+            }
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger py-2 mb-3">
+                    <i class="bi bi-exclamation-circle me-2"></i>@ViewBag.Error
+                </div>
+            }
+
+            <form method="post" action="/Account/Login">
+                <div class="mb-3">
+                    <label class="form-label">Kullanıcı Adı</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input name="username" type="text" class="form-control" placeholder="kullanici.adi" required autofocus/>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Şifre</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input name="password" type="password" class="form-control" placeholder="••••••••" required/>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Giriş Yap
+                </button>
+            </form>
+
+            <div class="text-center my-3" style="font-size:.85rem;color:#9ca3af;">veya</div>
+            <a href="/Account/Register" class="btn btn-outline-secondary w-100 py-2 fw-semibold">
+                <i class="bi bi-person-plus me-2"></i>Müşteri Olarak Kayıt Ol
+            </a>
+
+            <hr class="my-4"/>
+            <p class="mb-2" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;">Demo Hesapları</p>
+            <div class="demo-accounts">
+                @foreach (var (role, user, pw) in new[]{
+                    ("Admin",    "admin",    "admin123"),
+                    ("Personel", "ahmet.depo", "staf123"),
+                    ("Müşteri",  "ali.musteri",  "customer123"),
+                    ("Kurye",  "kurye.mehmet",  "kurye123"),
+                })
+                {
+                    <div class="demo-row">
+                        <span class="demo-label">@role</span>
+                        <span><code>@user</code> / <code>@pw</code></span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

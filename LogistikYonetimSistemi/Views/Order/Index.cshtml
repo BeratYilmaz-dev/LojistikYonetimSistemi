@@ -1,0 +1,249 @@
+@model List<LogistikYonetimSistemi.ViewModels.OrderViewModel>
+@{
+    ViewData["Title"] = "Siparişler";
+    bool isAdmin      = User.IsInRole("Admin");
+    bool isCourier    = User.IsInRole("Courier");
+    string department = User.FindFirst("Department")?.Value ?? "";
+    // Depo personeli sipariş akışını yönetebilir; Satın Alma yalnızca stok günceller.
+    bool isDepoStaff  = User.IsInRole("Staff") && department == "Depo";
+}
+
+<div class="page-header">
+    <h1><i class="bi @(User.IsInRole("Courier") ? "bi-truck" : "bi-cart3") me-2"></i>@(User.IsInRole("Courier") ? "Teslimat Listesi" : "Siparişler")</h1>
+    @if (User.IsInRole("Customer"))
+    {
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newOrderModal">
+            <i class="bi bi-cart-plus me-1"></i>Yeni Sipariş
+        </button>
+    }
+</div>
+
+<div class="card">
+<div class="card-body p-0">
+<table class="table table-hover mb-0">
+    <thead>
+        <tr>
+            <th>Sipariş No</th><th>Müşteri</th><th>Ürünler</th>
+            <th>Tutar (₺)</th><th>Durum</th><th>Takip No</th><th>Tarih</th>
+            <th>İşlemler</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var o in Model)
+    {
+        var css = o.Status switch {
+            "Beklemede"    => "status-beklemede",
+            "Onaylandı"    => "status-onaylandi",
+            "Hazırlanıyor" => "status-hazirlaniyor",
+            "Kargoda"      => "status-kargoda",
+            "Teslim Edildi"=> "status-teslim",
+            "İade"         => "status-iade",
+            _              => "status-iptal"
+        };
+        <tr>
+            <td><code>@o.Id</code></td>
+            <td>@o.CustomerName</td>
+            <td style="max-width:180px;font-size:.8rem">@string.Join(", ", o.ItemSummaries)</td>
+            <td>
+                <div>@o.TotalAmount.ToString("N0") ₺</div>
+                @if (o.CargoFee > 0)
+                {
+                    <small class="text-muted">
+                        Ürün: @o.ProductTotal.ToString("N0") + Kargo: @o.CargoFee.ToString("N0")
+                    </small>
+                }
+                @if (o.HasInsurance)         { <span class="badge bg-info text-dark" style="font-size:.65rem">Sigortalı</span> }
+                @if (o.HasFragileProtection) { <span class="badge bg-warning text-dark" style="font-size:.65rem">Kırılgan</span> }
+            </td>
+            <td><span class="badge-status @css">@o.Status</span></td>
+            <td><small>@(o.TrackingNumber ?? "—")</small></td>
+            <td><small>@o.CreatedAt.ToString("dd.MM.yy HH:mm")</small></td>
+            <td>
+                <div class="d-flex gap-1 flex-wrap">
+
+                @* ── Onayla / Hazırla / Kargola: Admin + Depo personeli ── *@
+                @if (isAdmin || isDepoStaff)
+                {
+                    if (o.Status == "Beklemede")
+                    {
+                        <form method="post" action="/Order/Approve">
+                            <input type="hidden" name="orderId" value="@o.Id"/>
+                            <button class="btn btn-success btn-sm">
+                                <i class="bi bi-check-lg me-1"></i>Onayla
+                            </button>
+                        </form>
+                    }
+                    if (o.Status == "Onaylandı")
+                    {
+                        <form method="post" action="/Order/Advance">
+                            <input type="hidden" name="orderId" value="@o.Id"/>
+                            <input type="hidden" name="action" value="prepare"/>
+                            <button class="btn btn-outline-primary btn-sm">Hazırla</button>
+                        </form>
+                    }
+                    if (o.Status == "Hazırlanıyor")
+                    {
+                        <form method="post" action="/Order/Advance">
+                            <input type="hidden" name="orderId" value="@o.Id"/>
+                            <input type="hidden" name="action" value="ship"/>
+                            <button class="btn btn-outline-primary btn-sm">Kargola</button>
+                        </form>
+                    }
+                }
+                @* ── Teslim Et: yalnızca Kurye ve Admin (FR-05) ── *@
+                @if ((isCourier || isAdmin) && o.Status == "Kargoda")
+                {
+                    <form method="post" action="/Order/Advance">
+                        <input type="hidden" name="orderId" value="@o.Id"/>
+                        <input type="hidden" name="action" value="deliver"/>
+                        <button class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-truck me-1"></i>Teslim Et
+                        </button>
+                    </form>
+                }
+
+                @* ── İptal: yalnızca Beklemede & Onaylandı durumları (FR-02.2) ── *@
+                @if (o.Status is "Beklemede" or "Onaylandı")
+                {
+                    <form method="post" action="/Order/Cancel"
+                          onsubmit="return confirm('Sipariş iptal edilsin mi?')">
+                        <input type="hidden" name="orderId" value="@o.Id"/>
+                        <button class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-x-lg me-1"></i>İptal
+                        </button>
+                    </form>
+                }
+
+                @* ── İade: Kargoda & Teslim Edildi ── *@
+                @if (o.Status is "Kargoda" or "Teslim Edildi")
+                {
+                    <form method="post" action="/Order/Return"
+                          onsubmit="return confirm('İade başlatılsın mı? Stoklar geri yüklenecek.')">
+                        <input type="hidden" name="orderId" value="@o.Id"/>
+                        <button class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-arrow-return-left me-1"></i>İade
+                        </button>
+                    </form>
+                }
+
+                </div>
+            </td>
+        </tr>
+    }
+    @if (!Model.Any())
+    {
+        <tr><td colspan="8" class="text-center py-5">
+            <div class="empty-state">
+                <i class="bi bi-cart-x d-block"></i>
+                <p>Henüz sipariş yok.</p>
+            </div>
+        </td></tr>
+    }
+    </tbody>
+</table>
+</div>
+</div>
+
+<!-- ── Yeni Sipariş Modal ─────────────────────────────── -->
+<div class="modal fade" id="newOrderModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cart-plus me-2"></i>Yeni Sipariş Oluştur</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/Order/Create">
+      <div class="modal-body">
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Ödeme Yöntemi</label>
+            <select name="PaymentType" class="form-select">
+                <option value="0">Kredi Kartı</option>
+                <option value="1">Havale / EFT</option>
+                <option value="2">Kripto</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Kargo Firması</label>
+            <select name="CargoType" class="form-select">
+                <option value="0">Aras Kargo</option>
+                <option value="1">Yurtiçi Kargo</option>
+                <option value="2">GlobalExpres</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Teslimat Mesafesi</label>
+            <select name="DistanceKm" class="form-select">
+                <option value="50">İl içi (~50 km)</option>
+                <option value="150" selected>Yakın çevre (~150 km)</option>
+                <option value="300">Uzak mesafe (~300 km)</option>
+                <option value="500">Farklı bölge (~500 km)</option>
+            </select>
+            <div class="form-text">Kargo ücreti = (ağırlık × 3 ₺/kg) + (mesafe × 0.05 ₺/km)</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Ek Kargo Hizmetleri</label>
+            <div class="d-flex gap-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="AddInsurance" id="chkInsurance" value="true"/>
+                <label class="form-check-label" for="chkInsurance">
+                  <i class="bi bi-shield-check text-info me-1"></i>
+                  <strong>Sigortalı Gönderim</strong>
+                  <span class="text-muted ms-1">(kargo ücretinin %5'i)</span>
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="AddFragileProtection" id="chkFragile" value="true"/>
+                <label class="form-check-label" for="chkFragile">
+                  <i class="bi bi-box-seam text-warning me-1"></i>
+                  <strong>Kırılgan Koruma</strong>
+                  <span class="text-muted ms-1">(+25 ₺ sabit)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="fw-semibold mb-2">Ürün Seçimi</p>
+        <div style="max-height:340px;overflow-y:auto;">
+        <table class="table table-sm">
+          <thead><tr><th>Ürün</th><th>Kategori</th><th>Fiyat (₺)</th><th>Ağırlık</th><th>Stok</th><th style="width:110px">Adet</th></tr></thead>
+          <tbody>
+          @{
+              int idx = 0;
+              foreach (var kv in LogistikYonetimSistemi.Utils.App.StockManager.GetAllProducts())
+              {
+                  var p   = kv.Value;
+                  var cat = LogistikYonetimSistemi.ViewModels.ProductViewModel.CategoryFromId(p.Id);
+                  <tr>
+                      <td>
+                          <input type="hidden" name="Items[@idx].ProductId" value="@p.Id"/>
+                          @p.Name
+                      </td>
+                      <td><span class="badge bg-secondary">@cat</span></td>
+                      <td>@p.Price.ToString("N0")</td>
+                      <td class="text-muted" style="font-size:.8rem">@p.WeightKg.ToString("0.##") kg</td>
+                      <td class="@(p.Stock <= p.Threshold ? "stock-low" : "")">@p.Stock</td>
+                      <td>
+                          <input name="Items[@idx].Quantity" type="number" min="0" max="@p.Stock"
+                                 value="0" class="form-control form-control-sm"/>
+                      </td>
+                  </tr>
+                  idx++;
+              }
+          }
+          </tbody>
+        </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Siparişi Oluştur
+        </button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,86 @@
+@model List<LogistikYonetimSistemi.ViewModels.ProductViewModel>
+@{
+    ViewData["Title"] = "Stok Yönetimi";
+    bool canEdit = User.IsInRole("Admin") || User.IsInRole("Staff");
+}
+
+@if (canEdit)
+{
+<div class="d-flex justify-content-end mb-3">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#stockModal">
+        <i class="bi bi-plus-minus me-1"></i>Stok Güncelle
+    </button>
+</div>
+}
+
+<div class="card">
+<div class="card-body p-0">
+<table class="table table-hover mb-0">
+    <thead>
+        <tr><th>ID</th><th>Ürün Adı</th><th>Kategori</th><th>Mevcut Stok</th><th>Eşik</th><th>Durum</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var p in Model)
+    {
+        <tr class="@(p.IsLowStock ? "table-danger" : "")">
+            <td><code>@p.Id</code></td>
+            <td>@p.Name</td>
+            <td><span class="badge bg-secondary">@p.Category</span></td>
+            <td class="fw-bold @(p.IsLowStock ? "stock-low" : "stock-ok")">
+                @p.Stock
+                @if (p.IsLowStock){ <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i> }
+            </td>
+            <td>@p.Threshold</td>
+            <td>
+                @if (p.IsLowStock)
+                    { <span class="badge-status status-iade">KRİTİK</span> }
+                else
+                    { <span class="badge-status status-teslim">Normal</span> }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+</div>
+</div>
+
+<!-- Stok Güncelle Modal -->
+@if (canEdit)
+{
+<div class="modal fade" id="stockModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-minus me-2"></i>Stok Güncelle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/Stock/Update">
+      <div class="modal-body row g-3">
+        <div class="col-12">
+          <label class="form-label">Ürün</label>
+          <select name="productId" class="form-select" required>
+              @foreach (var p in Model)
+              {
+                  <option value="@p.Id">[@p.Id] @p.Name (Stok: @p.Stock)</option>
+              }
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Miktar Değişimi</label>
+          <input name="delta" type="number" class="form-control" required placeholder="+50 veya -10"/>
+          <div class="form-text">Artırmak için + , azaltmak için - girin.</div>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Neden</label>
+          <input name="reason" class="form-control" placeholder="Tedarik, satış vb." required/>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="submit" class="btn btn-primary">Güncelle</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+}

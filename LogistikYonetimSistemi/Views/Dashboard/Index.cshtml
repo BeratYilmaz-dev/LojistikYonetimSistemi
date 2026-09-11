@@ -1,0 +1,367 @@
+@using LogistikYonetimSistemi.ViewModels
+@{
+    ViewData["Title"] = "Dashboard";
+    bool isCustomer  = (bool)(ViewBag.IsCustomer ?? false);
+    bool isCourier   = (bool)(ViewBag.IsCourier  ?? false);
+    var recentOrders = ViewBag.RecentOrders as List<OrderViewModel> ?? new();
+}
+
+@if (isCourier)
+{
+    <!-- ── Kurye Dashboard ───────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-xl-4">
+            <div class="stat-card @((int)(ViewBag.ActiveDeliveries ?? 0) > 0 ? "warning" : "success")">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Aktif Teslimat</div>
+                        <div class="stat-value">@ViewBag.ActiveDeliveries</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(245,158,11,.1);color:#f59e0b;">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-4">
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Bugün Teslim</div>
+                        <div class="stat-value text-success">@ViewBag.DeliveredToday</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(16,185,129,.1);color:#10b981;">
+                        <i class="bi bi-check2-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-4">
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Toplam Teslim Edildi</div>
+                        <div class="stat-value">@ViewBag.TotalDelivered</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(99,102,241,.1);color:#6366f1;">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="bi bi-truck me-2"></i>Teslim Bekleyen Siparişler</div>
+        <div class="card-body p-0">
+        @if (recentOrders.Any())
+        {
+            <table class="table table-hover mb-0">
+                <thead><tr><th>Sipariş No</th><th>Müşteri</th><th>Tutar (₺)</th><th>Takip No</th><th>Tarih</th><th>İşlem</th></tr></thead>
+                <tbody>
+                @foreach (var o in recentOrders)
+                {
+                    <tr>
+                        <td><code>@o.Id</code></td>
+                        <td>@o.CustomerName</td>
+                        <td>@o.TotalAmount.ToString("N0")</td>
+                        <td><small>@(o.TrackingNumber ?? "—")</small></td>
+                        <td><small>@o.CreatedAt.ToString("dd.MM.yy HH:mm")</small></td>
+                        <td>
+                            <form method="post" action="/Order/Advance">
+                                <input type="hidden" name="orderId" value="@o.Id"/>
+                                <input type="hidden" name="action" value="deliver"/>
+                                <button class="btn btn-success btn-sm">
+                                    <i class="bi bi-check-lg me-1"></i>Teslim Et
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-check-circle-fill text-success d-block" style="font-size:3rem;opacity:1;"></i>
+                <p class="text-success fw-semibold mt-2">Teslim bekleyen sipariş yok.</p>
+            </div>
+        }
+        </div>
+    </div>
+}
+else if (isCustomer)
+{
+    <!-- ── Müşteri Dashboard ─────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-xl-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Siparişlerim</div>
+                        <div class="stat-value">@ViewBag.MyOrderCount</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(59,130,246,.1);color:#3b82f6;">
+                        <i class="bi bi-bag-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-4">
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Aktif Sipariş</div>
+                        <div class="stat-value">@ViewBag.ActiveOrders</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(99,102,241,.1);color:#6366f1;">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-4">
+            <div class="stat-card success">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:rgba(16,185,129,.1);color:#10b981;">
+                        <i class="bi bi-cart-plus"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label mb-1">Hızlı Sipariş</div>
+                        <a href="/Order" class="btn btn-success btn-sm">Sipariş Ver</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="bi bi-clock-history me-2"></i>Son Siparişlerim</div>
+        <div class="card-body p-0">
+        @if (recentOrders.Any())
+        {
+            <table class="table table-hover mb-0">
+                <thead><tr><th>Sipariş No</th><th>Tutar (₺)</th><th>Durum</th><th>Kargo Takip</th><th>Tarih</th></tr></thead>
+                <tbody>
+                @foreach (var o in recentOrders)
+                {
+                    var css = o.Status switch {
+                        "Beklemede"    => "status-beklemede",
+                        "Onaylandı"    => "status-onaylandi",
+                        "Hazırlanıyor" => "status-hazirlaniyor",
+                        "Kargoda"      => "status-kargoda",
+                        "Teslim Edildi"=> "status-teslim",
+                        _              => "status-iade"
+                    };
+                    <tr>
+                        <td><code>@o.Id</code></td>
+                        <td>@o.TotalAmount.ToString("N0")</td>
+                        <td><span class="badge-status @css">@o.Status</span></td>
+                        <td><small>@(o.TrackingNumber ?? "—")</small></td>
+                        <td><small>@o.CreatedAt.ToString("dd.MM.yy HH:mm")</small></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-cart-x d-block"></i>
+                <p>Henüz sipariş oluşturmadınız.</p>
+                <a href="/Order" class="btn btn-primary btn-sm">İlk Siparişinizi Verin</a>
+            </div>
+        }
+        </div>
+    </div>
+}
+else
+{
+    <!-- ── Admin/Personel Dashboard ──────────────────────── -->
+    var lowStock = ViewBag.LowStockItems as List<ProductViewModel> ?? new();
+    int lowCount = (int)(ViewBag.LowStockCount ?? 0);
+
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Toplam Ürün</div>
+                        <div class="stat-value">@ViewBag.TotalProducts</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(59,130,246,.1);color:#3b82f6;">
+                        <i class="bi bi-cpu-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card @(lowCount > 0 ? "warning" : "success")">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Kritik Stok</div>
+                        <div class="stat-value @(lowCount > 0 ? "text-warning" : "text-success")">@lowCount</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(245,158,11,.1);color:#f59e0b;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Toplam Sipariş</div>
+                        <div class="stat-value text-success">@ViewBag.TotalOrders</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(16,185,129,.1);color:#10b981;">
+                        <i class="bi bi-cart-check-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label mb-1">Ciro (onaylı)</div>
+                        <div class="stat-value" style="font-size:1.4rem;">@(((double)ViewBag.TotalRevenue).ToString("N0"))</div>
+                        <div class="stat-label">₺</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(99,102,241,.1);color:#6366f1;">
+                        <i class="bi bi-currency-dollar"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header p-0 border-bottom-0">
+            <ul class="nav nav-tabs px-3 pt-3" id="dashTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview">
+                        <i class="bi bi-grid-1x2 me-1"></i>Genel Bakış
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-lowstock">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Kritik Stok
+                        @if (lowCount > 0)
+                        { <span class="badge bg-danger ms-1">@lowCount</span> }
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-orders">
+                        <i class="bi bi-clock-history me-1"></i>Son Siparişler
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="tab-content card-body">
+
+            <div class="tab-pane fade show active" id="tab-overview">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3">Sipariş Durum Dağılımı</h6>
+                        @{
+                            var allO = ViewBag.RecentOrders as List<OrderViewModel> ?? new();
+                            var groups = new[]{
+                                ("Beklemede","status-beklemede"),("Onaylandı","status-onaylandi"),
+                                ("Hazırlanıyor","status-hazirlaniyor"),("Kargoda","status-kargoda"),
+                                ("Teslim Edildi","status-teslim"),("İade/İptal","status-iade"),
+                            };
+                        }
+                        <div class="d-flex flex-wrap gap-2">
+                        @foreach (var (lbl, css) in groups)
+                        {
+                            int cnt = lbl == "İade/İptal"
+                                ? allO.Count(o => o.Status is "İade" or "İptal")
+                                : allO.Count(o => o.Status == lbl);
+                            <div class="text-center px-3 py-2 rounded" style="background:#f8fafc;min-width:90px;">
+                                <div class="fw-bold fs-5">@cnt</div>
+                                <span class="badge-status @css">@lbl</span>
+                            </div>
+                        }
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3">Hızlı Erişim</h6>
+                        <div class="d-grid gap-2">
+                            <a href="/Order"   class="btn btn-outline-primary text-start"><i class="bi bi-cart-plus me-2"></i>Siparişler</a>
+                            <a href="/Stock"   class="btn btn-outline-secondary text-start"><i class="bi bi-bar-chart-line me-2"></i>Stok Yönetimi</a>
+                            <a href="/Product" class="btn btn-outline-secondary text-start"><i class="bi bi-cpu me-2"></i>Ürün Kataloğu</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-lowstock">
+                @if (lowStock.Any())
+                {
+                    <div class="alert alert-warning d-flex gap-2 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>@lowStock.Count ürün</strong> kritik stok seviyesinin altında!
+                    </div>
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>ID</th><th>Ürün</th><th>Kategori</th><th>Stok</th><th>Eşik</th></tr></thead>
+                        <tbody>
+                        @foreach (var p in lowStock)
+                        {
+                            <tr>
+                                <td><code>@p.Id</code></td>
+                                <td>@p.Name</td>
+                                <td><span class="badge bg-secondary">@p.Category</span></td>
+                                <td class="stock-low fw-bold">@p.Stock</td>
+                                <td>@p.Threshold</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-check-circle-fill text-success d-block" style="font-size:3rem;opacity:1;"></i>
+                        <p class="text-success fw-semibold mt-2">Tüm stoklar normal seviyede.</p>
+                    </div>
+                }
+            </div>
+
+            <div class="tab-pane fade" id="tab-orders">
+                @if (recentOrders.Any())
+                {
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>Sipariş No</th><th>Müşteri</th><th>Tutar (₺)</th><th>Durum</th><th>Tarih</th></tr></thead>
+                        <tbody>
+                        @foreach (var o in recentOrders)
+                        {
+                            var css = o.Status switch {
+                                "Beklemede"    => "status-beklemede",
+                                "Onaylandı"    => "status-onaylandi",
+                                "Hazırlanıyor" => "status-hazirlaniyor",
+                                "Kargoda"      => "status-kargoda",
+                                "Teslim Edildi"=> "status-teslim",
+                                _              => "status-iade"
+                            };
+                            <tr>
+                                <td><code>@o.Id</code></td>
+                                <td>@o.CustomerName</td>
+                                <td>@o.TotalAmount.ToString("N0")</td>
+                                <td><span class="badge-status @css">@o.Status</span></td>
+                                <td><small>@o.CreatedAt.ToString("dd.MM.yy HH:mm")</small></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state"><i class="bi bi-cart-x d-block"></i><p>Henüz sipariş yok.</p></div>
+                }
+            </div>
+        </div>
+    </div>
+}

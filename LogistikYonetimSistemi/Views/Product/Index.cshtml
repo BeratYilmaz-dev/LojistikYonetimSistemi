@@ -1,0 +1,189 @@
+@model List<LogistikYonetimSistemi.ViewModels.ProductViewModel>
+@{
+    ViewData["Title"] = "Ürünler";
+    bool canEdit   = User.IsInRole("Admin") || User.IsInRole("Staff");
+    bool canDelete = User.IsInRole("Admin");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Filtreler -->
+    <form method="get" class="d-flex gap-2 flex-wrap">
+        <input name="search" value="@ViewBag.Search" class="form-control form-control-sm" style="width:220px" placeholder="Ürün adı ara..."/>
+        <select name="category" class="form-select form-select-sm" style="width:160px">
+            @foreach (var cat in (string[])ViewBag.Categories)
+            {
+                <option value="@cat" selected="@(ViewBag.Category == cat ? "selected" : null)">@cat</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
+    </form>
+    @if (canEdit)
+    {
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
+            <i class="bi bi-plus-lg me-1"></i>Yeni Ürün
+        </button>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Ürün Adı</th><th>Kategori</th>
+                    <th>Fiyat (₺)</th><th>Ağırlık</th><th>Stok</th><th>Eşik</th><th>Durum</th>
+                    @if (canEdit){ <th>İşlem</th> }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td><code>@p.Id</code></td>
+                    <td>
+                        @p.Name
+                        @if (p.IsComposite)
+                        {
+                            <span class="badge bg-info text-dark ms-1">Montaj (@p.ComponentCount bileşen)</span>
+                        }
+                    </td>
+                    <td><span class="badge bg-secondary">@p.Category</span></td>
+                    <td>@p.Price.ToString("N0")</td>
+                    <td class="text-muted" style="font-size:.85rem">@p.WeightKg.ToString("0.##") kg</td>
+                    <td class="@(p.IsLowStock ? "stock-low" : "stock-ok")">
+                        @p.Stock @if(p.IsLowStock){ <i class="bi bi-exclamation-triangle-fill"></i> }
+                    </td>
+                    <td>@p.Threshold</td>
+                    <td>
+                        @if (p.IsLowStock)
+                            { <span class="badge-status status-iade">Kritik</span> }
+                        else
+                            { <span class="badge-status status-teslim">Normal</span> }
+                    </td>
+                    @if (canEdit)
+                    {
+                    <td class="d-flex gap-1">
+                        <button class="btn btn-outline-secondary btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#editModal"
+                                data-id="@p.Id" data-name="@p.Name"
+                                data-price="@p.Price" data-threshold="@p.Threshold"
+                                data-weight="@p.WeightKg.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        @if (canDelete && !p.IsComposite)
+                        {
+                        <form method="post" action="/Product/Delete"
+                              onsubmit="return confirm('@p.Name silinsin mi?')">
+                            <input type="hidden" name="id" value="@p.Id"/>
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        }
+                    </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── Yeni Ürün Modal ────────────────────────────────── -->
+@if (canEdit)
+{
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Yeni Ürün Ekle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/Product/Create">
+      <div class="modal-body row g-3">
+        <div class="col-6">
+          <label class="form-label">Ürün ID <small class="text-muted">(CPU-005)</small></label>
+          <input name="Id" class="form-control" required placeholder="CPU-005"/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Stok Adedi</label>
+          <input name="Stock" type="number" min="0" class="form-control" required value="10"/>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Ürün Adı</label>
+          <input name="Name" class="form-control" required placeholder="Intel Core i9-15900K"/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Fiyat (₺)</label>
+          <input name="Price" type="number" step="0.01" min="0" class="form-control" required/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Eşik (Min. Stok)</label>
+          <input name="Threshold" type="number" min="1" class="form-control" required value="5"/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Ağırlık (kg)</label>
+          <input name="WeightKg" type="number" step="0.01" min="0.01" class="form-control" required value="0.5"
+                 placeholder="0.50"/>
+          <div class="form-text">Kargo ücretini etkiler.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="submit" class="btn btn-primary">Ekle</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Düzenle Modal ──────────────────────────────────── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Ürün Düzenle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/Product/Edit">
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="editId"/>
+        <div class="col-12">
+          <label class="form-label">Ürün Adı</label>
+          <input name="name" id="editName" class="form-control" required/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Fiyat (₺)</label>
+          <input name="price" id="editPrice" type="number" step="0.01" class="form-control" required/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Eşik (Min. Stok)</label>
+          <input name="threshold" id="editThreshold" type="number" min="1" class="form-control" required/>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Ağırlık (kg)</label>
+          <input name="weightKg" id="editWeight" type="number" step="0.01" min="0.01" class="form-control" required/>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+}
+
+@section Scripts {
+<script>
+document.getElementById('editModal')?.addEventListener('show.bs.modal', e => {
+    const btn = e.relatedTarget;
+    document.getElementById('editId').value        = btn.dataset.id;
+    document.getElementById('editName').value      = btn.dataset.name;
+    document.getElementById('editPrice').value     = btn.dataset.price;
+    document.getElementById('editThreshold').value = btn.dataset.threshold;
+    document.getElementById('editWeight').value    = btn.dataset.weight;
+});
+</script>
+}
